@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+text_classification/datasets/fake_identity/
+
+.idea/
