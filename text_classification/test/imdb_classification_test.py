@@ -8,7 +8,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+torch.backends.cudnn.enabled = False
 from src.models.TextCNN import TextCNN, TextCNNConfig
+from src.models.RnnModel import RnnConfig, RnnModel
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
@@ -114,7 +116,6 @@ def test(model, test_loader, thresholds=[0.5, 0.6, 0.7, 0.8, 0.9]):
 
 
 if __name__ == '__main__':
-    config = TextCNNConfig(n_vocab=20000, n_embed=300, num_classes=2, embedding_pretrained=None, num_filters=600, filter_sizes=[3, 4, 5], dropout=0.2)
 
     train_loader = DataLoader(dataset=IMDBDataset(type="train", num_words=20000, maxlen=512), batch_size=128,
                               shuffle=True)
@@ -125,8 +126,12 @@ if __name__ == '__main__':
 
     measure_list = []
     for i in range(5):
+        # config = TextCNNConfig(n_vocab=20000, n_embed=300, num_classes=2, embedding_pretrained=None, num_filters=600, filter_sizes=[3, 4, 5], dropout=0.2)
+        # model = TextCNN(config).to(device)
 
-        model = TextCNN(config).to(device)
+        config = RnnConfig(20000, 300, 2, None, hidden_size=512,  layer_num=1, bidirectional=True)
+        model = RnnModel(config).to(device)
+
         num_epochs = 5
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters())
