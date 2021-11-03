@@ -2,7 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
 # C extensions
 *.so
 
@@ -131,3 +130,5 @@ dmypy.json
 text_classification/datasets/fake_identity/
 
 .idea/
+
+text_classification/datasets/.data/
