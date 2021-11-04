@@ -45,8 +45,8 @@ class RnnModel(nn.Module):
         self.fc = nn.Linear(config.hidden_size * D, config.num_classes)
 
     def attn(self, h_t):
-        h_t = torch.tanh(h_t)
-        alpha = torch.softmax(torch.matmul(h_t, self.attn_w) + self.attn_b, dim=-1)
+        h_t = torch.tanh(h_t)  # (batch_size, seq_len, hidden_size * D)
+        alpha = torch.softmax(torch.matmul(h_t, self.attn_w) + self.attn_b, dim=-2)
         out = h_t * alpha
         return out
 
