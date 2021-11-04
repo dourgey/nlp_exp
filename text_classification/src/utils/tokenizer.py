@@ -37,7 +37,7 @@ class Tokenizer:
         assert id < self.vocab_size
         return self.id_to_token_dict[id]
 
-    def convert_token_to_id(self, token: int):
+    def convert_token_to_id(self, token: str):
         if token not in self.token_to_id_dict:
             return self.token_to_id_dict['[UNK]']
         return self.token_to_id_dict[token]
