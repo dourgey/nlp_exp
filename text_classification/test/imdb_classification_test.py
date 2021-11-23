@@ -10,6 +10,8 @@ import torch.optim as optim
 
 torch.backends.cudnn.enabled = False
 from src.models.TextCNN import TextCNN, TextCNNConfig
+from src.models.TextRCNN import TextRCNNConfig, TextRCNN
+from src.utils.utils import EarlyStopping
 from src.models.RnnModel import RnnConfig, RnnModel
 from torch.utils.data import DataLoader, Dataset
 from sklearn.model_selection import train_test_split
@@ -51,7 +53,8 @@ class IMDBDataset(Dataset):
         return len(self.x)
 
 
-def train(model, optimizer, criterion, num_epochs, train_loader, valid_loader):
+def train(model, optimizer, criterion, num_epochs, train_loader, valid_loader, valid_step=100, total_step=0):
+    early_stopping = EarlyStopping()
     model.train()
     loss_list = []
     valid_acc_list = []
@@ -68,12 +71,16 @@ def train(model, optimizer, criterion, num_epochs, train_loader, valid_loader):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-        valid_acc, valid_loss = valid(model, valid_loader, criterion)
-        valid_acc_list.append(valid_acc)
-        valid_loss_list.append(valid_loss)
-        tqdm_iterator.set_description('epoch %d' %epoch)
-        tqdm_iterator.set_postfix_str('train_loss={:^7.3f}, valid acc={:^7.3f}'.format(loss, valid_acc))
-    return loss_list, valid_acc_list, valid_loss_list
+            total_step += 1
+            if total_step % valid_step == 0:
+                valid_acc, valid_loss = valid(model, valid_loader, criterion)
+                valid_acc_list.append(valid_acc)
+                valid_loss_list.append(valid_loss)
+                tqdm_iterator.set_description('epoch %d' %epoch)
+                tqdm_iterator.set_postfix_str('train_loss={:^7.3f}, valid acc={:^7.3f}'.format(loss, valid_acc))
+                if early_stopping.step(valid_loss):
+                    return loss_list, valid_acc_list, valid_loss_list, total_step
+    return loss_list, valid_acc_list, valid_loss_list, total_step
 
 def valid(model, valid_loader, criterion):# -> tuple(float, float):
     correct = 0
@@ -124,19 +131,50 @@ if __name__ == '__main__':
     test_loader = DataLoader(dataset=IMDBDataset(type="test", num_words=20000, maxlen=512), batch_size=128,
                              shuffle=False)
 
+    # measure_list = []
+    # for i in range(1):
+    #     # config = TextCNNConfig(n_vocab=20000, n_embed=300, num_classes=2, embedding_pretrained=None, num_filters=600, filter_sizes=[3, 4, 5], dropout=0.2)
+    #     # model = TextCNN(config).to(device)
+    #
+    #     config = RnnConfig(20000, 300, 2, None, hidden_size=256,  layer_num=1, bidirectional=True, use_attn=True)
+    #     model = RnnModel(config).to(device)
+    #
+    #     num_epochs = 30
+    #     criterion = nn.CrossEntropyLoss()
+    #     optimizer = optim.Adam(model.parameters())
+    #
+    #     train(model, optimizer, criterion, num_epochs, train_loader, valid_loader)
+    #
+    #     measure = test(model, test_loader)
+    #     measure_list.append(measure)
+    #     plt.xkcd()
+    #     measrue_name = ["accuracy", "precision", "recall", "f1 score"]
+    #     for i in range(len(measure)):
+    #         plt.plot([0.5, 0.6, 0.7, 0.8, 0.9], measure[i], label=measrue_name[i])
+    #     plt.legend()
+    #     plt.xticks([0.5, 0.6, 0.7, 0.8, 0.9])
+    #     plt.xlabel("threshold")
+    #     plt.title("test result")
+    #     plt.show()
+    #
+    #     print("bilstm - attention\n", measure)
+
     measure_list = []
-    for i in range(5):
+    for i in range(1):
         # config = TextCNNConfig(n_vocab=20000, n_embed=300, num_classes=2, embedding_pretrained=None, num_filters=600, filter_sizes=[3, 4, 5], dropout=0.2)
         # model = TextCNN(config).to(device)
 
-        config = RnnConfig(20000, 300, 2, None, hidden_size=512,  layer_num=1, bidirectional=True)
-        model = RnnModel(config).to(device)
+        # config = RnnConfig(20000, 300, 2, None, hidden_size=128, layer_num=1, bidirectional=False, use_attn=False)
+        # model = RnnModel(config).to(device)
 
-        num_epochs = 5
+        config = TextRCNNConfig(20000, 128, 2, None, 256, 1, 0.25)
+        model = TextRCNN(config).to(device)
+
+        num_epochs = 20
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters())
 
-        train(model, optimizer, criterion, 5, train_loader, valid_loader)
+        train(model, optimizer, criterion, num_epochs, train_loader, valid_loader)
 
         measure = test(model, test_loader)
         measure_list.append(measure)
@@ -149,3 +187,30 @@ if __name__ == '__main__':
         plt.xlabel("threshold")
         plt.title("test result")
         plt.show()
+
+        print("textrcnn\n", measure)
+
+    # measure_list = []
+    # for i in range(1):
+    #     config = TextCNNConfig(n_vocab=20000, n_embed=300, num_classes=2, embedding_pretrained=None, num_filters=600, filter_sizes=[3, 4, 5], dropout=0.2)
+    #     model = TextCNN(config).to(device)
+    #
+    #     num_epochs = 50
+    #     criterion = nn.CrossEntropyLoss()
+    #     optimizer = optim.Adam(model.parameters())
+    #
+    #     train(model, optimizer, criterion, num_epochs, train_loader, valid_loader)
+    #
+    #     measure = test(model, test_loader)
+    #     measure_list.append(measure)
+    #     plt.xkcd()
+    #     measrue_name = ["accuracy", "precision", "recall", "f1 score"]
+    #     for i in range(len(measure)):
+    #         plt.plot([0.5, 0.6, 0.7, 0.8, 0.9], measure[i], label=measrue_name[i])
+    #     plt.legend()
+    #     plt.xticks([0.5, 0.6, 0.7, 0.8, 0.9])
+    #     plt.xlabel("threshold")
+    #     plt.title("test result")
+    #     plt.show()
+    #
+    #     print("TextCNN\n", measure)
